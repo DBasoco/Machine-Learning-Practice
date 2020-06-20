@@ -17,8 +17,7 @@ import torch.nn.functional as F
 class Net(nn.Module):
 
     def __init__(self):
-        super(Net,
-              self).__init__()  # if my knowledge of classes is right we don't need the |Net, self| for this to work
+        super(Net, self).__init__()  # if my knowledge of classes is right we don't need the |Net, self| for this to work
 
         self.conv1 = nn.Conv2d(1, 6, 3)
         self.conv2 = nn.Conv2d(6, 16, 3)
@@ -59,3 +58,43 @@ print(params[0].size())
 input = torch.randn(1, 1, 32, 32)
 out = net(input)
 print(out)
+
+# zero the gradient buffers
+net.zero_grad()
+out.backward(torch.randn(1, 10))
+
+# loss function
+output = net(input)
+target = torch.randn(10)
+target = target.view(1, -1)
+criterion = nn.MSELoss()
+
+loss = criterion(output, target)
+print(loss)
+
+print(loss.grad_fn) # MESLoss
+print(loss.grad_fn.next_functions[0][0]) # Linear
+print(loss.grad_fn.next_functions[0][0].next_functions[0][0]) # ReLU
+
+# backprop
+net.zero_grad()
+
+print('conv1.bias.grad before backward')
+print(net.conv1.bias.grad)
+
+loss.backward()
+
+print('conv1.bias.grad after backward')
+print(net.conv1.bias.grad)
+
+# update weights
+import torch.optim as optim
+
+optimizer = optim.SGD(net.parameters(), 1r=0.01) # create optimizer
+
+# this goes in your training loop
+optimizer.zero_grad() # zero gradient buffers
+output = net(input)
+loss = criterion(output, target)
+loss.backward()
+optimizer.step() # does the update
