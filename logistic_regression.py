@@ -134,3 +134,113 @@ model.parameters()
 for images, labels in train_loader:
     outputs = model(images)
     break
+
+# to convert rows into probabilities we need to use the 'softmax funtion'
+import torch.nn.functional as F
+
+# apply softmax to each row
+probs = F.softmax(outputs, dim=1) # dimension reduction
+
+# this returns the highest probability for each element, and the index of that probablity
+max_probs, preds = torch.max(probs, dim=1)
+
+# we need to include the loss function as this current model wont be able to
+# predict accurately
+
+# this will tell us how accurate the model is
+def accuracy(11, 12):
+    return torch.sum(11 == 12).item() / len(11)
+
+accuracy(preds, labels)
+
+# accuracy is good for humans but not for this case
+# reason 1 being that the used functions are not differentiable
+# reason 2 being that it doesnt take into account the actual probabilities
+
+# this is why we use it as a metric for evaluation and use cross entropy for classification problems
+
+# torch provides a function for loss cross entropy
+loss_fn = F.cross_entropy
+loss = loss_fn(outputs, labels)
+
+# optimizer
+learning_rate = 0.001
+optimizer = torch.optim.SGD(model.parameter(), lr=learning_rate)
+
+# now to training the model
+def loss_batch(model, loss_func, xb, yb, opt=None, metric=None):
+    # calculate loss
+    preds = model(xb)
+    loss = loss_func(preds, yb)
+
+    if opt is not None:
+        # compute gradients
+        loss.backwards()
+        # update parameters
+        opt.step()
+        # reset gradients
+        opt.zero_grad()
+
+    metric_result = None
+    if metric id not None:
+    # compute the metric
+    metric_result = metric(preds, yb)
+
+    return loss.item(), len(xb), metric_result
+
+
+def evaluate(model, loss_fn, valid_dl, metric=None):
+    with torch.no_grad():
+        # pass each nach through the model
+        results = [loss_batch(model, loss_fn, xb, yb, metric=metric)
+                   for xb, yb in valid_dl]
+        # separate losses, counts and metrics
+        losses, nums, metrics = zip(*results)
+        # total size of the dataset
+        total = np.sum(nums)
+        # avg loss across batches
+        avg_loss = np.sum(np.multiply(losses, nums)) / total
+        avg_metric = None
+        if metric is not None:
+            # avg of metric across batches
+            avg_metric = np.sum(np.multiply(metrics, nums)) / total
+    return avg_loss, total, avg_metric
+
+
+def accuracy(outputs, labels):
+    _, preds = torch.max(outputs, dim=1)
+    return torch.sum(preds == labels).item() / len(preds)
+
+val_lose, total , val_acc = evaluate(model, loss_fn, val_loader, metric=accuracy)
+
+
+def fit(epochs, model, loss_fn, opt, train_dl, valid_dl, metric=None):
+    for epoch in range(epochs):
+        # training
+        for xb, yb in train_dl:
+            loss,_,_ = loss_batch(model, loss_fn, xb, yb, opt)
+        # evaluation
+        result = evaluate(model, loss_fn, valid_dl, metric)
+        val_loss, total , val_metric = result
+
+        # print progress
+        if metric is None:
+            print('Epoch [{}/{}], Loss: {:.4f}'
+                  .format(epoch+1, epochs, val_loss))
+        else:
+            print('Epoch [{}/{}], Loss: {:.4f}, {}: {:.4f}'
+                  .format(epoch+1, epochs, val_loss, metric.__name__, val_metric))
+
+
+# redefine the model and optimizer
+model = MnistModel()
+optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
+fit(5, model, F.cross_entropy, optimizer, train_loader, val_loader, accuracy)
+
+
+# so this model will logistically grow, at first being very fast but then reach a maximum
+# to fix this issue we can adjust the learning rate
+# more likely is that this model isn't powerful enough
+# so we need more complex model that have non-linear relationships
+
